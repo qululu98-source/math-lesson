@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>周长探索工具 v2.2 | 自由调整版</title>
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+    background: linear-gradient(135deg, #fce4ec 0%, #e1f5fe 50%, #f0f4c3 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ===== HEADER ===== */
+  header {
+    width: 100%;
+    background: linear-gradient(90deg, #d32f2f, #f57c00);
+    color: white;
+    text-align: center;
+    padding: 16px 10px 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  header h1 { font-size: 1.8rem; letter-spacing: 2px; text-shadow: 1px 2px 4px rgba(0,0,0,0.3); }
+  header p { font-size: 0.9rem; opacity: 0.9; margin-top: 4px; }
+
+  /* ===== LEVEL SELECTOR ===== */
+  .level-bar {
+    width: 100%;
+    background: rgba(0,0,0,0.05);
+    padding: 14px 20px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .level-bar span { font-weight: bold; color: #333; }
+  .level-btn {
+    padding: 8px 16px;
+    border: 2px solid #ccc;
+    background: white;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: bold;
+    transition: all 0.2s;
+  }
+  .level-btn.active {
+    background: linear-gradient(90deg, #d32f2f, #f57c00);
+    color: white;
+    border-color: #d32f2f;
+    box-shadow: 0 2px 8px rgba(211,47,47,0.4);
+  }
+  .level-btn:hover { border-color: #d32f2f; }
+
+  /* ===== MAIN LAYOUT ===== */
+  .main-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px 15px;
+    width: 100%;
+    max-width: 1400px;
+  }
+
+  /* ===== LEFT PANEL: PALETTE + CONTROLS ===== */
+  .left-panel {
+    flex: 0 0 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .palette-section, .controls-section, .summary-section {
+    background: white;
+    border-radius: 16px;
+    padding: 14px 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  }
+
+  .palette-section h2, .controls-section h2, .summary-section h2 {
+    font-size: 1rem;
+    color: #d32f2f;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 40px);
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .tile {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #42a5f5, #1565c0);
+    border: 2.5px solid #1565c0;
+    border-radius: 8px;
+    cursor: grab;
+    box-shadow: 0 2px 6px rgba(21,101,192,0.25);
+    transition: transform 0.15s, box-shadow 0.15s;
+    touch-action: none;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 0.65rem; font-weight: bold;
+    user-select: none;
+  }
+  .tile:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(21,101,192,0.4); }
+  .tile.placed { opacity: 0.4; cursor: not-allowed; }
+
+  .counter {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 1rem;
+    color: #555;
+  }
+  .counter span { font-weight: bold; color: #e53935; font-size: 1.1rem; }
+
+  .btn-reset, .btn-export, .btn-freestyle {
+    margin-top: 8px;
+    width: 100%;
+    padding: 9px 0;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+
+  .btn-reset {
+    background: #ef5350;
+    color: white;
+  }
+  .btn-reset:hover { background: #b71c1c; }
+
+  .btn-freestyle {
+    background: #7e57c2;
+    color: white;
+  }
+  .btn-freestyle.active {
+    background: #4527a0;
+  }
+  .btn-freestyle:hover { background: #4527a0; }
+
+  /* ===== EDGE COUNTER ===== */
+  .edge-counter {
+    background: linear-gradient(90deg, #e8f5e9, #fff3e0);
+    border: 2px solid #ff9800;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 0.9rem;
+    color: #333;
+    text-align: center;
+  }
+  .edge-counter .internal { color: #d32f2f; font-weight: bold; }
+  .edge-counter .external { color: #388e3c; font-weight: bold; }
+
+  /* ===== CENTRAL WORKSPACE ===== */
+  .center-panel {
+    flex: 1 1 520px;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .workspace-section {
+    background: white;
+    border-radius: 16px;
+    padding: 14px 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  }
+
+  .workspace-section h2 {
+    font-size: 1rem;
+    color: #d32f2f;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  #grid-canvas {
+    display: grid;
+    grid-template-columns: repeat(16, 35px);
+    grid-template-rows: repeat(16, 35px);
+    gap: 1px;
+    background: #b0bec5;
+    border: 2.5px solid #90a4ae;
+    border-radius: 8px;
+    overflow: hidden;
+    user-select: none;
+    margin: 0 auto;
+  }
+
+  .cell {
+    width: 35px; height: 35px;
+    background: #f5f5f5;
+    position: relative;
+    border: 1px solid #ddd;
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+
+  .cell.occupied {
+    background: linear-gradient(135deg, #64b5f6, #1976d2);
+    border: 1px solid #1565c0;
+    cursor: grab;
+  }
+  
+  .cell.occupied:hover {
+    cursor: grab;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.15);
+  }
+
+  .cell.occupied.selected {
+    border: 3px solid #ffd700;
+    box-shadow: inset 0 0 8px rgba(255,215,0,0.6), 0 0 12px rgba(255,215,0,0.4);
+    cursor: grabbing;
+  }
+
+  .cell.irregular {
+    background: linear-gradient(135deg, #ab47bc, #8e24aa);
+    border: 1px solid #6a1b9a;
+    cursor: grab;
+  }
+
+  .cell.edge-internal {
+    background: linear-gradient(135deg, #64b5f6, #1976d2);
+    border: 2px dashed #999 !important;
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.2);
+  }
+
+  .cell.edge-external {
+    background: linear-gradient(135deg, #64b5f6, #1976d2);
+    border: 2px solid #f57c00 !important;
+    box-shadow: 0 0 6px rgba(245,124,0,0.5);
+  }
+
+  .cell.drag-over { background: #ffe082; }
+
+  .status-bar {
+    margin-top: 10px;
+    background: #e3f2fd;
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-height: 50px;
+    font-size: 0.95rem;
+    color: #1565c0;
+    font-weight: bold;
+    text-align: center;
+    border: 2px solid #90caf9;
+  }
+
+  .status-bar .calc { font-size: 1.1rem; color: #e65100; margin-top: 3px; }
+  .status-bar .hint { color: #f57c00; font-size: 0.85rem; font-weight: normal; }
+
+  .btn-record {
+    margin-top: 8px;
+    width: 100%;
+    padding: 11px 0;
+    background: linear-gradient(90deg, #43a047, #66bb6a);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 1px;
+    box-shadow: 0 3px 10px rgba(67,160,71,0.3);
+    transition: all 0.2s;
+  }
+  .btn-record:hover { background: linear-gradient(90deg, #2e7d32, #43a047); transform: scale(1.02); }
+  .btn-record:disabled { background: #b0bec5; cursor: not-allowed; transform: none; }
+
+  /* ===== RIGHT PANEL: TABLE + HINTS ===== */
+  .right-panel {
+    flex: 0 0 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .table-section, .hints-section {
+    background: white;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  }
+
+  .table-section h2, .hints-section h2 {
+    font-size: 0.95rem;
+    color: #d32f2f;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  #record-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  #record-table th {
+    background: #d32f2f;
+    color: white;
+    padding: 7px 4px;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+
+  #record-table td {
+    padding: 6px 3px;
+    text-align: center;
+    border-bottom: 1px solid #e3f2fd;
+    color: #333;
+  }
+
+  #record-table tr:nth-child(even) td { background: #f5f5f5; }
+
+  .empty-hint { color: #aaa; font-size: 0.85rem; text-align: center; padding: 12px 0; }
+
+  /* ===== HINTS & SUGGESTIONS ===== */
+  .hint-box {
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    color: #e65100;
+    margin-top: 6px;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* ===== BADGES & ACHIEVEMENTS ===== */
+  .badge-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .badge {
+    background: linear-gradient(135deg, #ffd700, #ffa500);
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(255,165,0,0.3);
+  }
+
+  .badge.unlock { animation: popBadge 0.4s cubic-bezier(.175,.885,.32,1.275); }
+
+  @keyframes popBadge {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+  }
+
+  /* ===== DISCOVERY POPUP ===== */
+  #popup-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  #popup-overlay.show { display: flex; }
+
+  #popup-box {
+    background: white;
+    border-radius: 24px;
+    padding: 36px 32px 28px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    animation: popIn 0.35s cubic-bezier(.175,.885,.32,1.275);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  #popup-box .emoji { font-size: 3rem; }
+  #popup-box h2 { font-size: 1.5rem; color: #d32f2f; margin: 10px 0 8px; }
+  #popup-box .message { font-size: 1rem; color: #555; margin-bottom: 14px; line-height: 1.6; }
+
+  .chart-container {
+    background: #f5f5f5;
+    border-radius: 10px;
+    padding: 12px;
+    margin: 12px 0;
+    text-align: left;
+    font-size: 0.9rem;
+  }
+
+  .chart-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .chart-row.highlight {
+    background: #fff9c4;
+    font-weight: bold;
+    padding: 6px 4px;
+    border-radius: 4px;
+  }
+
+  .btn-close-popup {
+    margin-top: 14px;
+    padding: 11px 28px;
+    background: linear-gradient(90deg, #d32f2f, #f57c00);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-close-popup:hover { transform: scale(1.05); }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1000px) {
+    #grid-canvas {
+      grid-template-columns: repeat(16, 28px);
+      grid-template-rows: repeat(16, 28px);
+    }
+    .cell { width: 28px; height: 28px; }
+    .palette-grid { grid-template-columns: repeat(4, 32px); }
+    .tile { width: 32px; height: 32px; }
+  }
+
+  @media (max-width: 700px) {
+    .main-container { flex-direction: column; }
+    .left-panel, .center-panel, .right-panel { flex: 1 1 100%; max-width: 100%; }
+    header h1 { font-size: 1.3rem; }
+  }
+
+  /* ===== SUCCESS ANIMATION ===== */
+  .record-success {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(90deg, #43a047, #66bb6a);
+    color: white;
+    padding: 20px 40px;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    z-index: 2000;
+    animation: popNotify 0.5s cubic-bezier(.175,.885,.32,1.275);
+  }
+
+  @keyframes popNotify {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  }
+
+  /* ===== REPOSITIONING FEEDBACK ===== */
+  .reposition-hint {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, #2196f3, #00bcd4);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(33,150,243,0.3);
+    z-index: 999;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from { transform: translateX(-50%) translateY(-60px); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+  }
+
+  /* ===== DELETE ON DOUBLE CLICK HINT ===== */
+  .delete-hint {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, #ff6f00, #ff5722);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(255,87,34,0.3);
+    z-index: 999;
+    animation: slideDown 0.3s ease-out;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧮 周长探索工具 v2.2</h1>
+  <p>发现形状与周长的秘密规律！</p>
+</header>
+
+<!-- LEVEL SELECTOR -->
+<div class="level-bar">
+  <span>📚 选择难度：</span>
+  <button class="level-btn active" data-level="1">🌱 Level 1<br/>4 个方块</button>
+  <button class="level-btn" data-level="2">🎯 Level 2<br/>16 个方块</button>
+  <button class="level-btn" data-level="3">🚀 Level 3<br/>36 个方块</button>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main-container">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <!-- PALETTE -->
+    <section class="palette-section">
+      <h2>🟦 方块仓库</h2>
+      <div class="palette-grid" id="palette"></div>
+      <div class="counter">剩余：<span id="remaining">4</span> 块</div>
+    </section>
+
+    <!-- CONTROLS -->
+    <section class="controls-section">
+      <h2>⚙️ 工具</h2>
+      <button class="btn-reset" id="btn-reset">🔄 重置</button>
+      <button class="btn-freestyle" id="btn-freestyle">🎨 自由模式</button>
+    </section>
+
+    <!-- EDGE COUNTER -->
+    <div class="edge-counter">
+      <div>🔗 边计数</div>
+      <div>内部边：<span class="internal" id="edge-internal">0</span></div>
+      <div>外部边（周长）：<span class="external" id="edge-external">0</span></div>
+    </div>
+
+    <!-- SUMMARY SECTION -->
+    <section class="summary-section">
+      <h2>🏆 本关成就</h2>
+      <div class="badge-container" id="badge-container"></div>
+      <div id="level-progress" style="font-size:0.85rem; color:#555; text-align:center; margin-top:8px;"></div>
+    </section>
+  </div>
+
+  <!-- CENTER PANEL -->
+  <div class="center-panel">
+    <section class="workspace-section">
+      <h2>📐 拼图工作区</h2>
+      <p style="font-size:0.8rem; color:#666; text-align:center; margin-bottom:8px;">💡 提示：拖动任何方块可调整位置，双击可删除</p>
+      <div id="grid-canvas"></div>
+      <div class="status-bar" id="status-bar">
+        <div>👆 将方块拖入网格或调整已放置的方块</div>
+      </div>
+      <button class="btn-record" id="btn-record" disabled>✅ 记录这个结果</button>
+    </section>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <!-- TABLE -->
+    <section class="table-section">
+      <h2>📋 我的发现</h2>
+      <table id="record-table">
+        <thead>
+          <tr>
+            <th>长×宽</th>
+            <th>周长</th>
+          </tr>
+        </thead>
+        <tbody id="record-body">
+          <tr><td colspan="2" class="empty-hint">还没有记录</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- HINTS -->
+    <section class="hints-section">
+      <h2>💡 提示</h2>
+      <div id="hints-container" style="font-size:0.85rem; color:#555;"></div>
+    </section>
+  </div>
+
+</div>
+
+<!-- DISCOVERY POPUP -->
+<div id="popup-overlay" role="dialog" aria-modal="true">
+  <div id="popup-box">
+    <div class="emoji">🎉</div>
+    <h2>关卡完成！</h2>
+    <p class="message" id="popup-message"></p>
+    <div class="chart-container" id="popup-chart"></div>
+    <button class="btn-close-popup" id="btn-close-popup">👍 继续探索</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  CONFIGURATION BY LEVEL
+// ============================================================
+const LEVELS = {
+  1: {
+    tiles: 4,
+    targets: [{L:4, W:1}, {L:2, W:2}],
+    gridSize: 16,
+  },
+  2: {
+    tiles: 16,
+    targets: [{L:16, W:1}, {L:8, W:2}, {L:4, W:4}],
+    gridSize: 16,
+  },
+  3: {
+    tiles: 36,
+    targets: [{L:36, W:1}, {L:18, W:2}, {L:12, W:3}, {L:9, W:4}, {L:6, W:6}],
+    gridSize: 16,
+  }
+};
+
+// ============================================================
+//  GLOBAL STATE
+// ============================================================
+let currentLevel = 1;
+let config = LEVELS[currentLevel];
+let grid = Array.from({length: 16}, () => Array(16).fill(0));
+let tilesPlaced = 0;
+let currentRect = null;
+let records = [];
+let discoveryShown = false;
+let freeStyleMode = false;
+let dragTileId = null;
+let dragFromGrid = null;
+let dragFromGridPos = null;
+let selectedCell = null;
+let edgeStats = { internal: 0, external: 0 };
+
+// Sound effect function
+function playSound(type) {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioContext.currentTime;
+    
+    if (type === 'success') {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.setValueAtTime(1000, now + 0.1);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.setValueAtTime(0, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (type === 'record') {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.setValueAtTime(800, now + 0.15);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.setValueAtTime(0, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    }
+  } catch (e) {
+    // 静默处理
+  }
+}
+
+// ============================================================
+//  BUILD UI
+// ============================================================
+function buildPalette() {
+  const palette = document.getElementById('palette');
+  palette.innerHTML = '';
+  for (let i = 0; i < config.tiles; i++) {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.textContent = '1';
+    tile.dataset.id = i;
+    tile.setAttribute('draggable', 'true');
+    tile.addEventListener('dragstart', onTileDragStart);
+    tile.addEventListener('dragend', onTileDragEnd);
+    tile.addEventListener('touchstart', onTileTouchStart, {passive: false});
+    palette.appendChild(tile);
+  }
+  updateRemaining();
+}
+
+function buildGrid() {
+  const canvas = document.getElementById('grid-canvas');
+  canvas.innerHTML = '';
+  for (let r = 0; r < 16; r++) {
+    for (let c = 0; c < 16; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.addEventListener('dragover', onCellDragOver);
+      cell.addEventListener('dragleave', onCellDragLeave);
+      cell.addEventListener('drop', onCellDrop);
+      cell.addEventListener('click', onCellClick);
+      cell.addEventListener('dblclick', onCellDoubleClick);
+      canvas.appendChild(cell);
+    }
+  }
+}
+
+// ============================================================
+//  LEVEL SWITCHING
+// ============================================================
+document.querySelectorAll('.level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentLevel = +btn.dataset.level;
+    config = LEVELS[currentLevel];
+    records = [];
+    discoveryShown = false;
+    freeStyleMode = false;
+    document.getElementById('btn-freestyle').classList.remove('active');
+    resetGrid();
+    buildPalette();
+    buildGrid();
+    renderTable();
+    updateBadges();
+    updateLevelProgress();
+    document.getElementById('hints-container').innerHTML = '';
+  });
+});
+
+// ============================================================
+//  DRAG & DROP PALETTE → GRID
+// ============================================================
+function onTileDragStart(e) {
+  dragTileId = e.currentTarget.dataset.id;
+  dragFromGrid = null;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', e.currentTarget);
+}
+
+function onTileDragEnd(e) {
+  if (dragFromGrid) {
+    dragFromGrid = null;
+    dragFromGridPos = null;
+    document.querySelectorAll('.cell.selected').forEach(c => c.classList.remove('selected'));
+    selectedCell = null;
+  }
+}
+
+function onCellDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onCellDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onCellDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const row = +e.currentTarget.dataset.row;
+  const col = +e.currentTarget.dataset.col;
+
+  // 来自调色板的拖动
+  if (dragTileId !== null && !dragFromGrid) {
+    if (grid[row][col]) {
+      showRejectionFeedback('此位置已占用！');
+      return;
+    }
+
+    const tileEl = document.querySelector(`.tile[data-id="${dragTileId}"]`);
+    if (tileEl && !tileEl.classList.contains('placed')) {
+      placeOnGrid(row, col, 1);
+      tileEl.classList.add('placed');
+      tilesPlaced++;
+      dragTileId = null;
+      updateRemaining();
+      if (!freeStyleMode) analyzeGrid();
+      else analyzeIrregular();
+    }
+  }
+  // 来自网格的拖动（重新定位）✨ 关键改动
+  else if (dragFromGrid && dragFromGridPos) {
+    const {row: oldRow, col: oldCol} = dragFromGridPos;
+    const cellType = grid[oldRow][oldCol];
+    
+    if (grid[row][col] && !(row === oldRow && col === oldCol)) {
+      showRejectionFeedback('此位置已占用！');
+      return;
+    }
+
+    if (row === oldRow && col === oldCol) {
+      deselectCell();
+      return;
+    }
+
+    // 移除旧位置
+    grid[oldRow][oldCol] = 0;
+    getCellEl(oldRow, oldCol).classList.remove('occupied', 'irregular', 'selected');
+
+    // 放置新位置
+    grid[row][col] = cellType;
+    getCellEl(row, col).classList.add(cellType === 1 ? 'occupied' : 'irregular', 'selected');
+
+    dragFromGrid = null;
+    dragFromGridPos = null;
+    selectedCell = {row, col};
+
+    if (!freeStyleMode) analyzeGrid();
+    else analyzeIrregular();
+  }
+}
+
+function showRejectionFeedback(message) {
+  const hint = document.createElement('div');
+  hint.className = 'reposition-hint';
+  hint.textContent = '❌ ' + message;
+  hint.style.background = 'linear-gradient(90deg, #f44336, #e91e63)';
+  document.body.appendChild(hint);
+  setTimeout(() => hint.remove(), 2000);
+}
+
+// ============================================================
+//  TOUCH SUPPORT
+// ============================================================
+let touchTile = null, ghostEl = null, touchFromGrid = false, touchGridPos = null;
+
+function onTileTouchStart(e) {
+  e.preventDefault();
+  touchTile = e.currentTarget;
+  
+  const isGridCell = touchTile.classList.contains('cell');
+  if (isGridCell && touchTile.classList.contains('occupied')) {
+    touchFromGrid = true;
+    touchGridPos = {row: +touchTile.dataset.row, col: +touchTile.dataset.col};
+  } else if (isGridCell && touchTile.classList.contains('irregular')) {
+    touchFromGrid = true;
+    touchGridPos = {row: +touchTile.dataset.row, col: +touchTile.dataset.col};
+  } else if (touchTile.classList.contains('placed')) {
+    return;
+  }
+
+  const touch = e.touches[0];
+  ghostEl = touchTile.cloneNode(true);
+  ghostEl.style.position = 'fixed';
+  ghostEl.style.opacity = '0.7';
+  ghostEl.style.pointerEvents = 'none';
+  ghostEl.style.zIndex = '9999';
+  ghostEl.style.width = touchTile.offsetWidth + 'px';
+  ghostEl.style.height = touchTile.offsetHeight + 'px';
+  ghostEl.style.left = (touch.clientX - touchTile.offsetWidth/2) + 'px';
+  ghostEl.style.top = (touch.clientY - touchTile.offsetHeight/2) + 'px';
+  document.body.appendChild(ghostEl);
+  document.addEventListener('touchmove', onTouchMove, {passive: false});
+  document.addEventListener('touchend', onTouchEnd);
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  if (ghostEl) {
+    ghostEl.style.left = (touch.clientX - parseFloat(ghostEl.style.width)/2) + 'px';
+    ghostEl.style.top = (touch.clientY - parseFloat(ghostEl.style.height)/2) + 'px';
+  }
+  document.querySelectorAll('.cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (el && el.classList.contains('cell')) el.classList.add('drag-over');
+}
+
+function onTouchEnd(e) {
+  document.removeEventListener('touchmove', onTouchMove);
+  document.removeEventListener('touchend', onTouchEnd);
+  if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+  document.querySelectorAll('.cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+
+  if (!touchTile) return;
+
+  const touch = e.changedTouches[0];
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  
+  if (el && el.classList.contains('cell')) {
+    const row = +el.dataset.row, col = +el.dataset.col;
+
+    if (!touchFromGrid && !touchTile.classList.contains('placed')) {
+      if (!grid[row][col]) {
+        placeOnGrid(row, col, 1);
+        touchTile.classList.add('placed');
+        tilesPlaced++;
+        updateRemaining();
+        if (!freeStyleMode) analyzeGrid();
+        else analyzeIrregular();
+      }
+    }
+    else if (touchFromGrid && touchGridPos) {
+      const {row: oldRow, col: oldCol} = touchGridPos;
+      const cellType = grid[oldRow][oldCol];
+      if (grid[row][col] && !(row === oldRow && col === oldCol)) {
+        showRejectionFeedback('此位置已占用！');
+      } else if (!(row === oldRow && col === oldCol)) {
+        grid[oldRow][oldCol] = 0;
+        getCellEl(oldRow, oldCol).classList.remove('occupied', 'irregular', 'selected');
+        grid[row][col] = cellType;
+        getCellEl(row, col).classList.add(cellType === 1 ? 'occupied' : 'irregular', 'selected');
+        selectedCell = {row, col};
+        if (!freeStyleMode) analyzeGrid();
+        else analyzeIrregular();
+      }
+    }
+  }
+
+  touchTile = null;
+  touchFromGrid = false;
+  touchGridPos = null;
+}
+
+// ============================================================
+//  CELL CLICK & DOUBLE CLICK HANDLER
+// ============================================================
+function onCellClick(e) {
+  const cell = e.currentTarget;
+  const row = +cell.dataset.row;
+  const col = +cell.dataset.col;
+
+  if (freeStyleMode && grid[row][col] === 2) {
+    // 不删除，允许拖动
+    if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
+      deselectCell();
+    } else {
+      deselectCell();
+      cell.classList.add('selected');
+      selectedCell = {row, col};
+      cell.setAttribute('draggable', 'true');
+      cell.addEventListener('dragstart', onGridCellDragStart);
+      cell.addEventListener('dragend', onGridCellDragEnd);
+      showSelectionFeedback();
+    }
+    return;
+  } else if (freeStyleMode && !grid[row][col] && tilesPlaced < config.tiles) {
+    if (isAdjacentToOccupied(row, col) || tilesPlaced === 0) {
+      grid[row][col] = 2;
+      cell.classList.add('irregular');
+      tilesPlaced++;
+      updateRemaining();
+      analyzeIrregular();
+    }
+    return;
+  }
+
+  // ✨ 非自由模式：任何已放置的方块都可选择拖动
+  if (!freeStyleMode && (grid[row][col] === 1 || grid[row][col] === 2)) {
+    if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
+      deselectCell();
+    } else {
+      deselectCell();
+      cell.classList.add('selected');
+      selectedCell = {row, col};
+      cell.setAttribute('draggable', 'true');
+      cell.addEventListener('dragstart', onGridCellDragStart);
+      cell.addEventListener('dragend', onGridCellDragEnd);
+      showSelectionFeedback();
+    }
+  }
+}
+
+// ✨ 新增：双击删除功能
+function onCellDoubleClick(e) {
+  const cell = e.currentTarget;
+  const row = +cell.dataset.row;
+  const col = +cell.dataset.col;
+
+  if (grid[row][col]) {
+    grid[row][col] = 0;
+    cell.classList.remove('occupied', 'irregular', 'selected', 'edge-internal', 'edge-external');
+    tilesPlaced--;
+    selectedCell = null;
+    updateRemaining();
+    
+    // 如果是从调色板拖入的，恢复调色板中的方块
+    if (!freeStyleMode) {
+      // 重新计算，看看是否还有未使用的方块
+      const usedCount = grid.flat().filter(x => x).length;
+      const unusedCount = config.tiles - usedCount;
+      document.querySelectorAll('.tile').forEach((tile, idx) => {
+        tile.classList.remove('placed');
+      });
+      // 重新标记已使用的方块
+      for (let r = 0; r < 16; r++) {
+        for (let c = 0; c < 16; c++) {
+          if (grid[r][c]) {
+            // 标记已使用
+          }
+        }
+      }
+      tilesPlaced = usedCount;
+      updateRemaining();
+      analyzeGrid();
+    } else {
+      analyzeIrregular();
+    }
+    
+    showDeleteFeedback();
+  }
+}
+
+function showSelectionFeedback() {
+  const hint = document.createElement('div');
+  hint.className = 'reposition-hint';
+  hint.textContent = '✅ 已选中！拖动到新位置或点击取消';
+  document.body.appendChild(hint);
+  setTimeout(() => hint.remove(), 2500);
+}
+
+function showDeleteFeedback() {
+  const hint = document.createElement('div');
+  hint.className = 'delete-hint';
+  hint.textContent = '🗑️ 已删除！';
+  document.body.appendChild(hint);
+  setTimeout(() => hint.remove(), 1500);
+}
+
+function deselectCell() {
+  if (selectedCell) {
+    const cell = getCellEl(selectedCell.row, selectedCell.col);
+    cell.classList.remove('selected');
+    cell.removeAttribute('draggable');
+    selectedCell = null;
+  }
+}
+
+function onGridCellDragStart(e) {
+  if (selectedCell) {
+    dragFromGrid = true;
+    dragFromGridPos = {row: selectedCell.row, col: selectedCell.col};
+    e.dataTransfer.effectAllowed = 'move';
+  }
+}
+
+function onGridCellDragEnd(e) {
+  // 处理已在 onCellDrop 中
+}
+
+// ============================================================
+//  FREE STYLE MODE
+// ============================================================
+document.getElementById('btn-freestyle').addEventListener('click', (e) => {
+  freeStyleMode = !freeStyleMode;
+  e.currentTarget.classList.toggle('active');
+  deselectCell();
+  if (freeStyleMode) {
+    document.getElementById('hints-container').innerHTML = '<div class="hint-box">🎨 自由模式已开启，点击创建任何形状！拖动调整，双击删除！</div>';
+  } else {
+    document.getElementById('hints-container').innerHTML = '';
+    analyzeGrid();
+  }
+});
+
+function isAdjacentToOccupied(r, c) {
+  const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+  for (const [dr, dc] of dirs) {
+    const nr = r + dr, nc = c + dc;
+    if (nr >= 0 && nr < 16 && nc >= 0 && nc < 16 && grid[nr][nc]) return true;
+  }
+  return false;
+}
+
+// ============================================================
+//  GRID HELPERS
+// ============================================================
+function placeOnGrid(row, col, type = 1) {
+  grid[row][col] = type;
+  getCellEl(row, col).classList.add(type === 1 ? 'occupied' : 'irregular');
+}
+
+function getCellEl(row, col) {
+  return document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+}
+
+function resetGrid() {
+  grid = Array.from({length: 16}, () => Array(16).fill(0));
+  tilesPlaced = 0;
+  currentRect = null;
+  selectedCell = null;
+  dragFromGrid = null;
+  dragFromGridPos = null;
+  document.querySelectorAll('.cell').forEach(c => {
+    c.classList.remove('occupied', 'irregular', 'edge-internal', 'edge-external', 'selected');
+  });
+  document.querySelectorAll('.tile').forEach(t => t.classList.remove('placed'));
+  updateRemaining();
+  updateStatus(null, null);
+  updateEdgeCounter(0, 0);
+  document.getElementById('btn-record').disabled = true;
+}
+
+function updateRemaining() {
+  document.getElementById('remaining').textContent = config.tiles - tilesPlaced;
+}
+
+// ============================================================
+//  RECTANGLE DETECTION
+// ============================================================
+function analyzeGrid() {
+  if (tilesPlaced === 0) {
+    updateStatus(null, null);
+    document.getElementById('btn-record').disabled = true;
+    document.getElementById('hints-container').innerHTML = '';
+    return;
+  }
+
+  let minR = 16, maxR = -1, minC = 16, maxC = -1;
+  for (let r = 0; r < 16; r++) {
+    for (let c = 0; c < 16; c++) {
+      if (grid[r][c] === 1) {
+        if (r < minR) minR = r; if (r > maxR) maxR = r;
+        if (c < minC) minC = c; if (c > maxC) maxC = c;
+      }
+    }
+  }
+
+  const H = maxR - minR + 1;
+  const W = maxC - minC + 1;
+  const area = H * W;
+
+  if (area !== tilesPlaced) {
+    updateStatus(null, 'irregular');
+    document.getElementById('btn-record').disabled = true;
+    document.getElementById('hints-container').innerHTML = '';
+    updateEdgeCounter(0, 0);
+    return;
+  }
+
+  let allFilled = true;
+  for (let r = minR; r <= maxR && allFilled; r++) {
+    for (let c = minC; c <= maxC && allFilled; c++) {
+      if (grid[r][c] !== 1) allFilled = false;
+    }
+  }
+
+  if (!allFilled) {
+    updateStatus(null, 'irregular');
+    document.getElementById('btn-record').disabled = true;
+    document.getElementById('hints-container').innerHTML = '';
+    updateEdgeCounter(0, 0);
+    return;
+  }
+
+  const L = Math.max(H, W);
+  const Ww = Math.min(H, W);
+  const perimeter = (L + Ww) * 2;
+  currentRect = {L, W: Ww, perimeter};
+
+  highlightEdges(minR, maxR, minC, maxC);
+  const {internal, external} = calculateEdges(minR, maxR, minC, maxC);
+  updateEdgeCounter(internal, external);
+
+  updateStatus(currentRect, 'valid');
+  document.getElementById('btn-record').disabled = false;
+
+  generateHint();
+}
+
+// ============================================================
+//  EDGE HIGHLIGHTING & CALCULATION
+// ============================================================
+function highlightEdges(minR, maxR, minC, maxC) {
+  document.querySelectorAll('.cell.edge-internal, .cell.edge-external').forEach(c => {
+    c.classList.remove('edge-internal', 'edge-external');
+  });
+
+  for (let r = minR; r <= maxR; r++) {
+    for (let c = minC; c <= maxC; c++) {
+      if (grid[r][c] === 1) {
+        const isPerimeter = r === minR || r === maxR || c === minC || c === maxC;
+        if (isPerimeter) {
+          getCellEl(r, c).classList.add('edge-external');
+        } else {
+          getCellEl(r, c).classList.add('edge-internal');
+        }
+      }
+    }
+  }
+}
+
+function calculateEdges(minR, maxR, minC, maxC) {
+  let internal = 0, external = 0;
+
+  for (let r = minR; r <= maxR; r++) {
+    for (let c = minC; c <= maxC; c++) {
+      if (grid[r][c] === 1) {
+        const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          const isInside = nr >= minR && nr <= maxR && nc >= minC && nc <= maxC && grid[nr][nc] === 1;
+          if (isInside) internal++;
+          else external++;
+        }
+      }
+    }
+  }
+
+  return {internal: internal/2, external};
+}
+
+function updateEdgeCounter(internal, external) {
+  edgeStats = {internal, external};
+  document.getElementById('edge-internal').textContent = internal;
+  document.getElementById('edge-external').textContent = external;
+}
+
+// ============================================================
+//  IRREGULAR SHAPE ANALYSIS
+// ============================================================
+function analyzeIrregular() {
+  if (tilesPlaced === 0) {
+    updateStatus(null, null);
+    document.getElementById('btn-record').disabled = true;
+    return;
+  }
+
+  const perimeter = calculateIrregularPerimeter();
+  currentRect = null;
+  updateStatus(null, 'shape', perimeter);
+  document.getElementById('btn-record').disabled = false;
+
+  const {internal, external} = calculateIrregularEdges();
+  updateEdgeCounter(internal, external);
+}
+
+function calculateIrregularPerimeter() {
+  let perim = 0;
+  for (let r = 0; r < 16; r++) {
+    for (let c = 0; c < 16; c++) {
+      if (grid[r][c] === 2) {
+        const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= 16 || nc < 0 || nc >= 16 || !grid[nr][nc]) perim++;
+        }
+      }
+    }
+  }
+  return perim;
+}
+
+function calculateIrregularEdges() {
+  let internal = 0, external = 0;
+  for (let r = 0; r < 16; r++) {
+    for (let c = 0; c < 16; c++) {
+      if (grid[r][c] === 2) {
+        const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          if (grid[nr] && grid[nr][nc] === 2) internal++;
+          else external++;
+        }
+      }
+    }
+  }
+  return {internal: internal/2, external};
+}
+
+// ============================================================
+//  STATUS BAR
+// ============================================================
+function updateStatus(rect, state, irregPerim = 0) {
+  const bar = document.getElementById('status-bar');
+  if (state === 'valid' && rect) {
+    bar.innerHTML = `
+      <div>✅ 长 = <strong>${rect.L} dm</strong> | 宽 = <strong>${rect.W} dm</strong></div>
+      <div class="calc">(${rect.L} + ${rect.W}) × 2 = <strong>${rect.perimeter} dm</strong></div>`;
+  } else if (state === 'irregular') {
+    bar.innerHTML = `<div class="hint">⚠️ 还不是完整的长方形</div>`;
+  } else if (state === 'shape') {
+    bar.innerHTML = `<div>🎨 自由形状 | 周长 = <strong>${irregPerim} dm</strong></div>`;
+  } else {
+    bar.innerHTML = `<div>👆 拖入方块或调整已放置的方块</div>`;
+  }
+}
+
+// ============================================================
+//  RECORD RESULT
+// ============================================================
+document.getElementById('btn-record').addEventListener('click', () => {
+  if (!currentRect && !freeStyleMode) return;
+
+  if (freeStyleMode) {
+    const perimeter = calculateIrregularPerimeter();
+    const shape = `不规则形状`;
+    records.push({shape, perimeter, isIrregular: true});
+    playSound('record');
+    showSuccessNotification();
+    renderTable();
+    return;
+  }
+
+  const {L, W, perimeter} = currentRect;
+  const key = `${L}x${W}`;
+  const keyR = `${W}x${L}`;
+  
+  if (records.find(r => r.key === key || r.key === keyR)) {
+    alert('这个配置已记录！试试别的。');
+    return;
+  }
+
+  records.push({L, W, perimeter, key});
+  playSound('record');
+  showSuccessNotification();
+  renderTable();
+  updateBadges();
+  checkDiscovery();
+});
+
+function showSuccessNotification() {
+  const notif = document.createElement('div');
+  notif.className = 'record-success';
+  notif.textContent = '✅ 记录成功！';
+  document.body.appendChild(notif);
+  setTimeout(() => notif.remove(), 500);
+}
+
+function renderTable() {
+  const tbody = document.getElementById('record-body');
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="empty-hint">还没有记录</td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map(r => {
+    if (r.isIrregular) {
+      return `<tr><td>${r.shape}</td><td><strong>${r.perimeter}</strong></td></tr>`;
+    }
+    return `<tr><td>${r.L}×${r.W}</td><td><strong>${r.perimeter}</strong></td></tr>`;
+  }).join('');
+}
+
+// ============================================================
+//  BADGES & ACHIEVEMENTS
+// ============================================================
+function updateBadges() {
+  const container = document.getElementById('badge-container');
+  const found = new Set();
+
+  records.forEach(r => {
+    if (!r.isIrregular) {
+      const key = `${r.L}x${r.W}`;
+      found.add(key);
+    }
+  });
+
+  container.innerHTML = '';
+
+  config.targets.forEach(t => {
+    const key = `${t.L}x${t.W}`;
+    if (found.has(key)) {
+      const badge = document.createElement('div');
+      badge.className = 'badge unlock';
+      badge.textContent = `✓ ${t.L}×${t.W}`;
+      container.appendChild(badge);
+    }
+  });
+
+  updateLevelProgress();
+}
+
+function updateLevelProgress() {
+  const progress = document.getElementById('level-progress');
+  const found = new Set();
+  records.forEach(r => {
+    if (!r.isIrregular) found.add(`${r.L}x${r.W}`);
+  });
+  const total = config.targets.length;
+  const count = found.size;
+  progress.textContent = `进度：${count}/${total}`;
+}
+
+// ============================================================
+//  HINTS & SUGGESTIONS
+// ============================================================
+function generateHint() {
+  const hintsDiv = document.getElementById('hints-container');
+  
+  if (records.length === 0) {
+    hintsDiv.innerHTML = '<div class="hint-box">💡 开始记录发现！</div>';
+    return;
+  }
+
+  const found = new Set();
+  records.forEach(r => {
+    if (!r.isIrregular) found.add(`${r.L}x${r.W}`);
+  });
+
+  const missing = config.targets.filter(t => !found.has(`${t.L}x${t.W}`));
+
+  if (missing.length > 0) {
+    const next = missing[0];
+    let hint = '';
+    if (next.L === 1) {
+      hint = '💡 能把所有块排成<strong>只有1行</strong>吗？';
+    } else if (next.W === 1) {
+      hint = '💡 尝试<strong>竖排</strong>方块？';
+    } else {
+      hint = `💡 尝试 <strong>${next.L}×${next.W}</strong> 的配置！`;
+    }
+    hintsDiv.innerHTML = `<div class="hint-box">${hint}</div>`;
+  } else {
+    hintsDiv.innerHTML = '<div class="hint-box">🎉 本关所有配置都已发现！</div>';
+  }
+}
+
+// ============================================================
+//  DISCOVERY CHECK
+// ============================================================
+function checkDiscovery() {
+  if (discoveryShown) return;
+
+  const found = new Set();
+  records.forEach(r => {
+    if (!r.isIrregular) found.add(`${r.L}x${r.W}`);
+  });
+
+  const allTargetsFound = config.targets.every(t => found.has(`${t.L}x${t.W}`));
+
+  if (allTargetsFound) {
+    setTimeout(showDiscovery, 600);
+  }
+}
+
+function showDiscovery() {
+  discoveryShown = true;
+  const rects = records.filter(r => !r.isIrregular);
+  rects.sort((a, b) => a.perimeter - b.perimeter);
+
+  let chartHTML = '';
+  rects.forEach((r, idx) => {
+    const isMinimal = idx === 0;
+    chartHTML += `
+      <div class="chart-row ${isMinimal ? 'highlight' : ''}">
+        <span>${r.L}×${r.W}</span>
+        <span>周长 = ${r.perimeter} dm ${isMinimal ? '✨' : ''}</span>
+      </div>`;
+  });
+
+  document.getElementById('popup-message').textContent = 
+    '你发现了周长的规律！';
+  document.getElementById('popup-chart').innerHTML = chartHTML;
+  document.getElementById('popup-overlay').classList.add('show');
+}
+
+document.getElementById('btn-close-popup').addEventListener('click', () => {
+  document.getElementById('popup-overlay').classList.remove('show');
+});
+
+document.getElementById('btn-reset').addEventListener('click', resetGrid);
+
+// ============================================================
+//  INIT
+// ============================================================
+buildPalette();
+buildGrid();
+updateBadges();
+updateLevelProgress();
+</script>
+</body>
+</html>
