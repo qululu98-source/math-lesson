@@ -186,7 +186,7 @@
     touch-action: none;
   }
   .tile:hover { transform: scale(1.12); }
-  .tile.placed { opacity: 0.4; }
+  .tile.placed { opacity: 0.4; pointer-events: none; }
   .tile.selected {
     border: 3px solid #ffd700;
     box-shadow: 0 0 12px rgba(255,215,0,0.8);
@@ -663,7 +663,7 @@ function createPaletteTile(id, version) {
 }
 
 // ============================================================
-//  PALETTE TOUCH EVENTS
+//  PALETTE TOUCH EVENTS - ⭐ 修复问题1：方块视觉状态不更新
 // ============================================================
 function onTileTouchStart(e) {
   if (e.currentTarget.classList.contains('placed')) {
@@ -699,7 +699,7 @@ function onTileTouchEnd(e) {
   
   // 恢复视觉效果
   if (dragState.element) {
-    dragState.element.style.opacity = '1';
+    dragState.element.style.opacity = '';
     dragState.element.style.transform = '';
   }
   
@@ -716,8 +716,13 @@ function onTileTouchEnd(e) {
       placeOnGrid(row, col, 1);
       tilesPlaced++;
       
+      // ⭐ 修复：更新所有同ID的方块视觉状态（包括mobile和desktop版本）
       document.querySelectorAll(`.tile[data-id="${selectedPaletteId}"]`).forEach(t => {
         t.classList.add('placed');
+        t.style.opacity = '';
+        t.style.transform = '';
+        // 强制重排以刷新DOM显示
+        void t.offsetWidth;
       });
       
       selectedPaletteId = null;
@@ -807,7 +812,7 @@ function buildGrid() {
 }
 
 // ============================================================
-//  CELL TOUCH EVENTS
+//  CELL TOUCH EVENTS - ⭐ 修复问题2：拖动后周长边线不更新
 // ============================================================
 function onCellTouchStart(e) {
   const row = +e.currentTarget.dataset.row;
@@ -900,8 +905,17 @@ function onCellTouchEnd(e) {
     
     showHint('✅ 已移动！');
     
-    if (!freeStyleMode) analyzeGrid();
-    else analyzeIrregular();
+    // ⭐ 修复：强制重新分析并更新周长边线
+    if (!freeStyleMode) {
+      analyzeGrid();
+      highlightPerimeterEdges();
+    } else {
+      analyzeIrregular();
+      highlightPerimeterEdges();
+    }
+    
+    // 强制重排刷新DOM
+    void document.getElementById('grid-canvas').offsetWidth;
   }
   
   gridDragState.active = false;
@@ -977,7 +991,7 @@ function onCellDrop(e) {
 }
 
 // ============================================================
-//  CELL CLICK
+//  CELL CLICK - ⭐ 修复问题3：全局点击清除选中状态
 // ============================================================
 function onCellClick(e) {
   const cell = e.currentTarget;
@@ -1061,6 +1075,25 @@ function deselectCell() {
     selectedCell = null;
   }
 }
+
+// ⭐ 修复问题3：全局点击事件处理
+document.addEventListener('click', function(e) {
+  // 如果点击在grid外部，清除选中状态
+  const grid = document.getElementById('grid-canvas');
+  const palette = document.getElementById('palette');
+  const paletteMobile = document.getElementById('palette-mobile');
+  
+  if (!e.target.closest('#grid-canvas') && 
+      !e.target.closest('.tile') && 
+      !e.target.closest('.btn-reset') &&
+      !e.target.closest('.btn-freestyle') &&
+      !e.target.closest('.btn-record') &&
+      !e.target.closest('.level-btn')) {
+    deselectCell();
+    document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
+    selectedPaletteId = null;
+  }
+}, true);
 
 function onGridCellDragStart(e) {
   if (selectedCell) {
@@ -1580,6 +1613,17 @@ document.querySelectorAll('.level-btn').forEach(btn => {
 // ============================================================
 document.getElementById('btn-reset').addEventListener('click', resetGrid);
 document.getElementById('btn-reset-mobile').addEventListener('click', resetGrid);
+
+// ============================================================
+//  SHOW HINT FUNCTION
+// ============================================================
+function showHint(message) {
+  const hint = document.createElement('div');
+  hint.className = 'reposition-hint';
+  hint.textContent = message;
+  document.body.appendChild(hint);
+  setTimeout(() => hint.remove(), 1500);
+}
 
 // ============================================================
 //  INIT
